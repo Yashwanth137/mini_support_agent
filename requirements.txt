@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sentence-transformers
+faiss-cpu
+pandas
+pydantic
+pydantic-settings
+python-dotenv
+google-genai
+pytest
