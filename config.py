@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     embedding_model_name: str = "all-MiniLM-L6-v2"
     llm_model_name: str = "gemini-3.1-flash-lite"
     
+    # RAG Configs
+    rag_top_k: int = 2
+    rag_threshold: float = 0.4
+    
     # Paths
     base_dir: Path = Path(__file__).resolve().parent
     data_dir: Path = base_dir / "data"

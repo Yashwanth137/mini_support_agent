@@ -46,13 +46,16 @@ Gemini 3.1 Flash-Lite is optimized for routing, classification, structured outpu
 ### Why Local Embeddings + FAISS?
 For a focused knowledge base (store policies), using a lightweight local embedding model (`all-MiniLM-L6-v2`) combined with FAISS is highly efficient. It avoids API costs for embeddings, reduces latency, and provides sufficient semantic matching for document retrieval.
 
-## Future Work & Limitations
-- **Limitations**: The keyword-first router might misclassify highly complex, uncommon phrasings. The naive markdown chunking strategy could split important context across boundaries.
-- **Future Work**: 
-  - Implement a Re-ranker for the RAG pipeline to improve retrieval accuracy.
-  - Implement streaming responses for better UX.
-  - Add conversation memory to handle multi-turn follow-up questions.
-  - Add metadata filtering to the vector store (e.g., filtering policies by category).
+## Limitations
+Current limitations include:
+- **Storage**: CSV-backed order storage is intended for demonstration and would be replaced by a database in production.
+- **Retrieval**: Retrieval uses semantic similarity only and does not include reranking. Retrieval behavior (`top_k` and `threshold`) is configurable via `config.py`.
+- **Memory**: No conversation memory is maintained.
+- **Robustness**: Logging and retries are intentionally minimal to keep the assignment focused.
+- **Security**: Prompt injection defenses are outside the current assignment scope.
+
+## Future Work
+- Implement an LLM reranker for the FAISS outputs in case the policy documentation grows significantly.
 
 ## How to Run
 

@@ -79,10 +79,15 @@ class RAGPipeline:
         else:
             print("No documents found to index.")
 
-    def retrieve(self, query: str, top_k: int = 2, threshold: float = 0.4) -> List[Document]:
+    def retrieve(self, query: str, top_k: int = None, threshold: float = None) -> List[Document]:
         """
         Retrieves top_k documents. Drops any documents with cosine similarity < threshold.
         """
+        if top_k is None:
+            top_k = settings.rag_top_k
+        if threshold is None:
+            threshold = settings.rag_threshold
+            
         if not self.index or self.index.ntotal == 0:
             return []
 
