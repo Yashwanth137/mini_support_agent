@@ -50,7 +50,7 @@ For a focused knowledge base (store policies), using a lightweight local embeddi
 Current limitations include:
 - **Storage**: CSV-backed order storage is intended for demonstration and would be replaced by a database in production.
 - **Retrieval**: Retrieval uses semantic similarity only and does not include reranking. Retrieval behavior (`top_k` and `threshold`) is configurable via `config.py`.
-- **Memory**: No conversation memory is maintained.
+- **Memory**: The agent is stateless and does not maintain conversational context across turns. If additional information is required (e.g., a missing delivery date), the user should include it in the same query or repeat the original request with the missing information.
 - **Robustness**: Logging and retries are intentionally minimal to keep the assignment focused.
 - **Security**: Prompt injection defenses are outside the current assignment scope.
 
@@ -84,7 +84,7 @@ Current limitations include:
    ```bash
    python app.py
    ```
-   *The server will be available at `http://localhost:8000`. You can send POST requests to `/ask` with `{"query": "..."}`.*
+   *The server will be available at `http://localhost:8000`. You can send POST requests to `/ask` with `{"query": "..."}` at the Swagger UI page at `http://localhost:8000/docs`.*
 
 5. **First run:** The application downloads the sentence-transformers/all-MiniLM-L6-v2 model (~90 MB) from Hugging Face and builds the FAISS index. Subsequent runs reuse the cached model and persisted index, resulting in much faster startup.
 

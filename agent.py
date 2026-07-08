@@ -1,4 +1,5 @@
 import json
+import logging
 from google import genai
 from datetime import datetime
 from config import settings
@@ -9,11 +10,16 @@ from rag import RAGPipeline
 from business_logic import check_return_eligibility
 from prompts import RAG_QA_PROMPT, ORDER_SUMMARIZER_PROMPT, HYBRID_REASONING_PROMPT
 
+logger = logging.getLogger(__name__)
+
 class SupportAgent:
     def __init__(self):
         self.router = IntentRouter()
         self.tools = OrderTools()
+        
+        print("Initializing knowledge base...")
         self.rag = RAGPipeline()
+        print("Ready.\n")
         
         self.client = None
         api_key = settings.gemini_api_key or settings.google_api_key
@@ -21,7 +27,6 @@ class SupportAgent:
             self.client = genai.Client(api_key=api_key)
 
     def process_query(self, query: str) -> AgentResponse:
-        # 1. Route the query
         classification = self.router.route(query)
         try:
             intent = Intent(classification.intent)
@@ -29,7 +34,6 @@ class SupportAgent:
             intent = Intent.unsupported
         order_id = classification.order_id
 
-        # Execute appropriate workflow
         if intent == Intent.knowledge:
             return self._handle_knowledge(query)
         elif intent == Intent.order_lookup:
@@ -38,13 +42,13 @@ class SupportAgent:
             return self._handle_hybrid(query, order_id)
         else:
             return AgentResponse(
-                answer="I'm sorry, I can only help with questions about store policies or specific orders.",
+                answer="I'm sorry, I can only help with store policies and order-related questions.",
                 intent_used=Intent.unsupported
             )
 
     def _call_llm(self, prompt: str) -> str:
         if not self.client:
-            return "Error: LLM client not configured (Missing API key)."
+            return "I'm unable to generate a response right now. Please ensure the API key is configured."
         try:
             response = self.client.models.generate_content(
                 model=settings.llm_model_name,
@@ -52,7 +56,8 @@ class SupportAgent:
             )
             return response.text
         except Exception as e:
-            return f"Error generating response: {e}"
+            logger.error("LLM generation failed: %s", e)
+            return "I'm sorry, I encountered an issue generating a response. Please try again."
 
     def _handle_knowledge(self, query: str) -> AgentResponse:
         docs = self.rag.retrieve(query)

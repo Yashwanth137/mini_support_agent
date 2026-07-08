@@ -1,16 +1,32 @@
 import os
+import logging
 import pickle
 import faiss
 import numpy as np
 from pathlib import Path
 from typing import List
-from sentence_transformers import SentenceTransformer
 from config import settings
 from models import Document
 
+logger = logging.getLogger(__name__)
+
 class RAGPipeline:
     def __init__(self):
-        self.encoder = SentenceTransformer(settings.embedding_model_name)
+        # Suppress noisy HuggingFace/tokenizer warnings during model load
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+        import warnings
+        warnings.filterwarnings("ignore", message=".*unauthenticated.*")
+
+        from sentence_transformers import SentenceTransformer
+        import io, contextlib
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.encoder = SentenceTransformer(
+                settings.embedding_model_name,
+                device="cpu",
+            )
         self.dimension = self.encoder.get_embedding_dimension()
         self.index = None
         self.documents: List[Document] = []
@@ -19,12 +35,12 @@ class RAGPipeline:
 
     def _initialize_index(self):
         if settings.faiss_index_path.exists() and settings.faiss_metadata_path.exists():
-            print("Loading existing FAISS index...")
+            logger.debug("Loading existing FAISS index from disk.")
             self.index = faiss.read_index(str(settings.faiss_index_path))
             with open(settings.faiss_metadata_path, 'rb') as f:
                 self.documents = pickle.load(f)
         else:
-            print("Building new FAISS index...")
+            logger.debug("Building new FAISS index from documents.")
             # Use Inner Product (Cosine Similarity if normalized)
             self.index = faiss.IndexFlatIP(self.dimension)
             self._build_index()
@@ -40,14 +56,13 @@ class RAGPipeline:
 
     def _normalize_vectors(self, vectors: np.ndarray) -> np.ndarray:
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-        # Avoid division by zero
         norms[norms == 0] = 1
         return vectors / norms
 
     def _build_index(self):
         docs_dir = settings.docs_dir
         if not docs_dir.exists():
-            print(f"Docs directory not found at {docs_dir}")
+            logger.warning("Docs directory not found at %s", docs_dir)
             return
 
         all_chunks = []
@@ -65,19 +80,18 @@ class RAGPipeline:
                     ))
 
         if all_chunks:
-            embeddings = self.encoder.encode(all_chunks, convert_to_numpy=True)
+            embeddings = self.encoder.encode(all_chunks, convert_to_numpy=True, show_progress_bar=False)
             embeddings = self._normalize_vectors(embeddings)
             
             self.index.add(embeddings)
             self.documents = all_docs
             
-            # Save index and metadata
             faiss.write_index(self.index, str(settings.faiss_index_path))
             with open(settings.faiss_metadata_path, 'wb') as f:
                 pickle.dump(self.documents, f)
-            print(f"Indexed {len(all_chunks)} chunks.")
+            logger.debug("Indexed %d chunks.", len(all_chunks))
         else:
-            print("No documents found to index.")
+            logger.warning("No documents found to index.")
 
     def retrieve(self, query: str, top_k: int = None, threshold: float = None) -> List[Document]:
         """
@@ -91,7 +105,7 @@ class RAGPipeline:
         if not self.index or self.index.ntotal == 0:
             return []
 
-        query_embedding = self.encoder.encode([query], convert_to_numpy=True)
+        query_embedding = self.encoder.encode([query], convert_to_numpy=True, show_progress_bar=False)
         query_embedding = self._normalize_vectors(query_embedding)
         
         similarities, indices = self.index.search(query_embedding, top_k)

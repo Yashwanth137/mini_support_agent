@@ -28,7 +28,6 @@ def check_return_eligibility(order: Order, delivery_date: Optional[date], curren
 
     category = order.category.lower()
     
-    # Check non-returnable categories
     non_returnable = ["cosmetics", "innerwear", "perishable"]
     if any(nr in category for nr in non_returnable):
         return {
@@ -38,7 +37,6 @@ def check_return_eligibility(order: Order, delivery_date: Optional[date], curren
             "reason": f"Items in the {order.category} category are non-returnable for hygiene/safety reasons."
         }
         
-    # Check specific window rules
     if "electronics" in category or "appliances" in category:
         window = 3
     else:

@@ -1,7 +1,10 @@
+import logging
 import pandas as pd
 from typing import Optional
 from config import settings
 from models import Order
+
+logger = logging.getLogger(__name__)
 
 class OrderTools:
     def __init__(self):
@@ -10,7 +13,7 @@ class OrderTools:
             # Ensure order_id is string
             self.df['order_id'] = self.df['order_id'].astype(str)
         except Exception as e:
-            print(f"Error loading orders.csv: {e}")
+            logger.error("Failed to load orders.csv: %s", e)
             self.df = pd.DataFrame()
 
     def order_exists(self, order_id: str) -> bool:
